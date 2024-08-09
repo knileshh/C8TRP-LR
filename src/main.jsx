@@ -7,6 +7,7 @@ import './index.css';
 import Home from './Home.jsx';
 import TextToSpeech from './TextToSpeech.jsx';
 import VoiceToText from './VoiceToText.jsx';
+import SpeechInteractionComponent from './SpeechInteractionComponent.jsx';
 
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
@@ -17,6 +18,7 @@ createRoot(document.getElementById('root')).render(
         <Route path="/" element={<Home />} />
         <Route path="/vt" element={<VoiceToText />} />
         <Route path="/ts" element={<TextToSpeech />} />
+        <Route path="/sic" element={<SpeechInteractionComponent />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>
