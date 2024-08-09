@@ -3,30 +3,32 @@ import React, { useState, useEffect } from 'react';
 const TextToSpeech = () => {
   const [text, setText] = useState('');
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [voices, setVoices] = useState([]);
-  const [selectedVoice, setSelectedVoice] = useState(null);
+  const [googleVoice, setGoogleVoice] = useState(null);
 
   useEffect(() => {
     const synth = window.speechSynthesis;
-    const updateVoices = () => {
-      setVoices(synth.getVoices());
+    const findGoogleVoice = () => {
+      const voices = synth.getVoices();
+      const googleVoice = voices.find(voice => 
+        voice.name.includes('Google') && voice.lang.startsWith('en-US')
+      );
+      if (googleVoice) {
+        setGoogleVoice(googleVoice);
+      }
     };
-    
-    updateVoices();
+
+    findGoogleVoice();
     if (speechSynthesis.onvoiceschanged !== undefined) {
-      speechSynthesis.onvoiceschanged = updateVoices;
+      speechSynthesis.onvoiceschanged = findGoogleVoice;
     }
   }, []);
 
   const speak = () => {
-    if (text !== '') {
+    if (text !== '' && googleVoice) {
       const synth = window.speechSynthesis;
       const utterance = new SpeechSynthesisUtterance(text);
       
-      if (selectedVoice) {
-        utterance.voice = selectedVoice;
-      }
-
+      utterance.voice = googleVoice;
       utterance.onstart = () => setIsSpeaking(true);
       utterance.onend = () => setIsSpeaking(false);
 
@@ -40,10 +42,6 @@ const TextToSpeech = () => {
     setIsSpeaking(false);
   };
 
-  const handleVoiceChange = (event) => {
-    setSelectedVoice(voices.find(voice => voice.name === event.target.value));
-  };
-
   return (
     <div className="bg-white shadow-lg rounded-lg p-6 max-w-md w-full mt-6">
       <h2 className="text-2xl font-bold mb-4 text-gray-800">Text to Speech</h2>
@@ -54,20 +52,6 @@ const TextToSpeech = () => {
         onChange={(e) => setText(e.target.value)}
         placeholder="Enter text to be read aloud..."
       />
-      <div className="mb-4">
-        <select
-          className="w-full p-2 border rounded-md"
-          onChange={handleVoiceChange}
-          value={selectedVoice ? selectedVoice.name : ''}
-        >
-          <option value="">Select a voice</option>
-          {voices.map((voice) => (
-            <option key={voice.name} value={voice.name}>
-              {voice.name} ({voice.lang})
-            </option>
-          ))}
-        </select>
-      </div>
       <button
         className={`w-full py-2 px-4 rounded-full font-semibold text-white transition-colors duration-300 ${
           isSpeaking 
