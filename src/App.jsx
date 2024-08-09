@@ -1,9 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 const VoiceToText = () => {
   const [isListening, setIsListening] = useState(false);
   const [text, setText] = useState('');
   const [recognition, setRecognition] = useState(null);
+  const [timer, setTimer] = useState(15);
+  const [lastSpeechTime, setLastSpeechTime] = useState(Date.now());
+
+  const stopListening = useCallback(() => {
+    if (recognition) {
+      recognition.stop();
+      setIsListening(false);
+      setTimer(15);
+    }
+  }, [recognition]);
 
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -20,23 +30,40 @@ const VoiceToText = () => {
           .join('');
 
         setText(transcript);
+        setLastSpeechTime(Date.now());
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+        setTimer(15);
       };
 
       setRecognition(recognition);
     }
   }, []);
 
+  useEffect(() => {
+    let interval;
+    if (isListening) {
+      interval = setInterval(() => {
+        const elapsedTime = (Date.now() - lastSpeechTime) / 1000;
+        const remainingTime = Math.max(0, 15 - Math.floor(elapsedTime));
+        setTimer(remainingTime);
+        
+        if (remainingTime === 0) {
+          stopListening();
+        }
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isListening, lastSpeechTime, stopListening]);
+
   const startListening = () => {
     if (recognition) {
       recognition.start();
       setIsListening(true);
-    }
-  };
-
-  const stopListening = () => {
-    if (recognition) {
-      recognition.stop();
-      setIsListening(false);
+      setLastSpeechTime(Date.now());
+      setTimer(15);
     }
   };
 
@@ -52,7 +79,7 @@ const VoiceToText = () => {
           }`}
           onClick={isListening ? stopListening : startListening}
         >
-          {isListening ? 'Stop Listening' : 'Start Listening'}
+          {isListening ? `Stop Listening (${timer}s)` : 'Start Listening'}
         </button>
       </div>
       <div className="bg-gray-100 p-4 rounded-lg">
