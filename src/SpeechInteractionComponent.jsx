@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 
 const SpeechInteractionComponent = () => {
   const [isActive, setIsActive] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentSection, setCurrentSection] = useState('header');
+  const [currentIndex, setCurrentIndex] = useState(-1);  // Start at -1 to allow for section callout
   const [transcribedText, setTranscribedText] = useState('');
   const [googleVoice, setGoogleVoice] = useState(null);
   const [recognition, setRecognition] = useState(null);
@@ -10,18 +11,29 @@ const SpeechInteractionComponent = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const phrasesToRead = [
-    "Truck Serial Number?",
-    "Truck Model?",
-    "Inspector Name?",
-    "Inspection Employee ID?",
-    "Date & Time of Inspection?",
-    "Location of Inspection?",
-    "Service Meter Hours (Odometer reading)?",
-    "Customer Name /Company name? ",
-    "CAT Customer ID?",
-  ];
-
+  const questionsToAsk = {
+    header: [
+      "Truck Serial Number?",
+      "Truck Model?",
+      "Inspector Name?",
+      "Inspection Employee ID?",
+      "Date & Time of Inspection?",
+      "Location of Inspection?",
+      "Service Meter Hours (Odometer reading)?",
+      "Customer Name /Company name?",
+      "CAT Customer ID?",
+    ],
+    tires: [
+      "Tire pressure for left front?",
+      "Tire pressure for right front?",
+      "Tire pressure for left rear?",
+      "Tire pressure for right rear?",
+      "Tire tread depth for left front?",
+      "Tire tread depth for right front?",
+      "Tire tread depth for left rear?",
+      "Tire tread depth for right rear?",
+    ]
+  };
   useEffect(() => {
     const initializeVoices = async () => {
       setIsLoading(true);
@@ -138,14 +150,28 @@ const SpeechInteractionComponent = () => {
   }, [recognition, isListening]);
 
   const processInteraction = useCallback(async () => {
-    if (currentIndex < phrasesToRead.length && isActive) {
+    const currentQuestions = questionsToAsk[currentSection];
+    
+    if (currentIndex === -1) {
+      // Callout the section name
       try {
         setIsLoading(true);
-        await speakText(phrasesToRead[currentIndex]);
+        await speakText(`Starting ${currentSection} section`);
+        setCurrentIndex(prevIndex => prevIndex + 1);
+      } catch (err) {
+        setError(`Error during section callout: ${err.message}`);
+        setIsActive(false);
+      } finally {
+        setIsLoading(false);
+      }
+    } else if (currentIndex < currentQuestions.length && isActive) {
+      try {
+        setIsLoading(true);
+        await speakText(currentQuestions[currentIndex]);
         setTranscribedText('');
         startListening();
 
-        // Wait for 5 seconds to allow for user response
+        // Wait for 7 seconds to allow for user response
         await new Promise(resolve => setTimeout(resolve, 7000));
 
         stopListening();
@@ -156,10 +182,14 @@ const SpeechInteractionComponent = () => {
       } finally {
         setIsLoading(false);
       }
+    } else if (currentSection === 'header' && isActive) {
+      // Move to the tires section
+      setCurrentSection('tires');
+      setCurrentIndex(-1);  // Reset to -1 to allow for section callout
     } else {
       setIsActive(false);
     }
-  }, [currentIndex, isActive, speakText, phrasesToRead, startListening, stopListening]);
+  }, [currentSection, currentIndex, isActive, speakText, startListening, stopListening]);
 
   useEffect(() => {
     if (isActive && !isListening && !isLoading) {
@@ -170,7 +200,8 @@ const SpeechInteractionComponent = () => {
   const handleStart = () => {
     setError(null);
     setIsActive(true);
-    setCurrentIndex(0);
+    setCurrentSection('header');
+    setCurrentIndex(-1);  // Start at -1 to allow for section callout
     setTranscribedText('');
   };
 
@@ -204,8 +235,13 @@ const SpeechInteractionComponent = () => {
         {isLoading ? 'Loading...' : isActive ? 'In Progress...' : 'Start Interaction'}
       </button>
       <div className="mt-4">
-        <p className="font-semibold">Current phrase:</p>
-        <p>{currentIndex < phrasesToRead.length ? phrasesToRead[currentIndex] : 'Finished'}</p>
+        <p className="font-semibold">Current section: {currentSection}</p>
+        <p className="font-semibold">Current question:</p>
+        <p>
+          {currentIndex === -1 
+            ? `Starting ${currentSection} section` 
+            : (questionsToAsk[currentSection][currentIndex] || 'Finished')}
+        </p>
       </div>
       <div className="mt-4">
         <p className="font-semibold">Transcribed Text:</p>
