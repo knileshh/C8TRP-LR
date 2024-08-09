@@ -11,11 +11,15 @@ const SpeechInteractionComponent = () => {
   const [error, setError] = useState(null);
 
   const phrasesToRead = [
-    "Hello, how are you?",
-    "What's your favorite color?",
-    "Tell me about your day.",
-    "What's the weather like?",
-    "Do you have any plans for the weekend?",
+    "Truck Serial Number?",
+    "Truck Model?",
+    "Inspector Name?",
+    "Inspection Employee ID?",
+    "Date & Time of Inspection?",
+    "Location of Inspection?",
+    "Service Meter Hours (Odometer reading)?",
+    "Customer Name /Company name? ",
+    "CAT Customer ID?",
   ];
 
   useEffect(() => {
@@ -142,7 +146,7 @@ const SpeechInteractionComponent = () => {
         startListening();
 
         // Wait for 5 seconds to allow for user response
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise(resolve => setTimeout(resolve, 7000));
 
         stopListening();
         setCurrentIndex(prevIndex => prevIndex + 1);
