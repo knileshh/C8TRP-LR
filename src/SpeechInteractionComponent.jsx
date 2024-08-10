@@ -10,30 +10,34 @@ const SpeechInteractionComponent = () => {
   const [isListening, setIsListening] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [answers, setAnswers] = useState({});
+
+  const API_URL = 'http://localhost:3000';
 
   const questionsToAsk = {
     header: [
       "Truck Serial Number?",
       "Truck Model?",
-      "Inspector Name?",
-      "Inspection Employee ID?",
-      "Date & Time of Inspection?",
-      "Location of Inspection?",
-      "Service Meter Hours (Odometer reading)?",
-      "Customer Name /Company name?",
-      "CAT Customer ID?",
+    //   "Inspector Name?",
+    //   "Inspection Employee ID?",
+    //   "Date & Time of Inspection?",
+    //   "Location of Inspection?",
+    //   "Service Meter Hours (Odometer reading)?",
+    //   "Customer Name /Company name?",
+    //   "CAT Customer ID?",
     ],
     tires: [
       "Tire pressure for left front?",
       "Tire pressure for right front?",
-      "Tire pressure for left rear?",
-      "Tire pressure for right rear?",
-      "Tire tread depth for left front?",
-      "Tire tread depth for right front?",
-      "Tire tread depth for left rear?",
-      "Tire tread depth for right rear?",
+    //   "Tire pressure for left rear?",
+    //   "Tire pressure for right rear?",
+    //   "Tire tread depth for left front?",
+    //   "Tire tread depth for right front?",
+    //   "Tire tread depth for left rear?",
+    //   "Tire tread depth for right rear?",
     ]
   };
+
   useEffect(() => {
     const initializeVoices = async () => {
       setIsLoading(true);
@@ -165,37 +169,72 @@ const SpeechInteractionComponent = () => {
         setIsLoading(false);
       }
     } else if (currentIndex < currentQuestions.length && isActive) {
-      try {
-        setIsLoading(true);
-        await speakText(currentQuestions[currentIndex]);
-        setTranscribedText('');
-        startListening();
-
-        // Wait for 7 seconds to allow for user response
-        await new Promise(resolve => setTimeout(resolve, 7000));
-
-        stopListening();
-        setCurrentIndex(prevIndex => prevIndex + 1);
-      } catch (err) {
-        setError(`Error during interaction: ${err.message}`);
+        try {
+          setIsLoading(true);
+          await speakText(currentQuestions[currentIndex]);
+          setTranscribedText('');
+          startListening();
+    
+          // Wait for 7 seconds to allow for user response
+          await new Promise(resolve => setTimeout(resolve, 7000));
+    
+          stopListening();
+          
+          // Store the answer
+          setAnswers(prevAnswers => ({
+            ...prevAnswers,
+            [currentSection]: {
+              ...prevAnswers[currentSection],
+              [currentQuestions[currentIndex]]: transcribedText
+            }
+          }));
+    
+          setCurrentIndex(prevIndex => prevIndex + 1);
+        } catch (err) {
+          setError(`Error during interaction: ${err.message}`);
+          setIsActive(false);
+        } finally {
+          setIsLoading(false);
+        }
+      } else if (currentSection === 'header' && isActive) {
+        // Move to the tires section
+        setCurrentSection('tires');
+        setCurrentIndex(-1);  // Reset to -1 to allow for section callout
+      } else {
+        // All questions completed, send data to backend
+        sendDataToBackend();
         setIsActive(false);
-      } finally {
-        setIsLoading(false);
       }
-    } else if (currentSection === 'header' && isActive) {
-      // Move to the tires section
-      setCurrentSection('tires');
-      setCurrentIndex(-1);  // Reset to -1 to allow for section callout
-    } else {
-      setIsActive(false);
-    }
-  }, [currentSection, currentIndex, isActive, speakText, startListening, stopListening]);
+    }, [currentSection, currentIndex, isActive, speakText, startListening, stopListening, transcribedText]);
 
   useEffect(() => {
     if (isActive && !isListening && !isLoading) {
       processInteraction();
     }
   }, [isActive, isListening, isLoading, processInteraction]);
+
+  const sendDataToBackend = async () => {
+    try {
+      console.log('Sending data to backend:', answers);
+      const response = await fetch(`${API_URL}/api/submit-inspection`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(answers),
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to submit inspection data');
+      }
+  
+      const result = await response.json();
+      console.log('Inspection data submitted successfully:', result);
+    } catch (error) {
+      console.error('Error submitting inspection data:', error);
+      setError('Failed to submit inspection data. Please try again.');
+    }
+  };
 
   const handleStart = () => {
     setError(null);
